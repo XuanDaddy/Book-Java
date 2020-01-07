@@ -34,6 +34,8 @@ BinaryOperator<Integer> binaryOperator = (num1, num2) -> num1 * num2;
 
 ### Lambda语法
 
+![image-20200106142626539](./images/lambda.png)
+
 #### 基本语法
 
 1. **声明**：Lambda绑定的接口类型；
