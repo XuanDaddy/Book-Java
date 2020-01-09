@@ -124,3 +124,110 @@ lambda3.test("hello",22);
 1. Lambda表达式必须和接口进行绑定；
 2. Lambda表达式可以附带0到n个参数，括号中的参数类型可以不用指定，jvm在运行时会自动根据绑定的抽象方法进行推导；
 3. Lambda表达式的返回值，如果代码块只有一行，并且没有大括号，不用写`return`关键字，单行代码的执行结果会自动返回；如果添加了大括号或者有多行代码，必须通过`return`关键字返回执行结果；
+
+### 变量捕获
+
+#### 匿名内部类中的变量捕获
+
+* 匿名内部类中不能通过`this`访问全局变量；
+* 局部变量不允许修改（final）；
+
+```java
+String s1 = "全局变量";
+
+public void test() {
+    String s2 = "局部变量";
+    new Thread(new Runnable() {
+        String s3 = "内部变量";
+
+        @Override
+        public void run() {
+            //访问全局变量
+            System.out.println(s1);
+//          System.out.println(this.s1);//不能使用this指定全局变量
+
+            //访问局部变量
+            System.out.println(s2);
+//          s2 = "123";//局部变量不能被修改
+
+            //访问内部变量
+            System.out.println(this.s3);
+        }
+    }).start();
+}
+```
+
+
+
+#### Lambda中的变量捕获
+
+* Lambda中可以通过`this`访问当前方法的对象实例；
+* 局部变量不允许修改（final）；
+
+```java
+public void testLambda() {
+    String s2 = "局部变量Lambda";
+     new Thread(() -> {
+        String s3 = "内部变量Lambda";
+        System.out.println(this.s1);
+        System.out.println(s2);
+        System.out.println(s3);
+    }).start();
+}
+```
+
+### Lambda底层原理
+
+* Lambda表达式在JVM底层解析成私有静态方法和匿名内部类型；
+* 通过实现接口的匿名内部类型中的接口方法调用静态方法，完成Lambda表达式的执行；
+
+```java
+public class App{
+
+	public static void main(String[] args){
+
+		ITest test = (msg) -> System.out.println(msg);
+		test.test("Hello World");
+	}
+}
+
+interface ITest{
+	void test(String msg);
+}
+```
+
+1. 通过`javac App.java`得到`App.class`和`ITest.class`;
+
+2. 通过`javap -p App`反编译查看`App.class`，多出一个静态方法`lambda$main$0`，它的实现就是调用了上面的方法`System.out.println(msg)`
+
+   ```java
+   ➜  ~ javap -p App
+   Compiled from "App.java"
+   public class App {
+     public App();
+     public static void main(java.lang.String[]);
+     private static void lambda$main$0(java.lang.String);
+   }
+   ```
+
+3. 通过`java -Djdk.internal.lambda.dumpProxyClasses App`获取内部类实现，App中生成一个内部类；
+
+   ```java
+   final class App$$Lambda$1 implements ITest {
+       private App$$Lambda$1() {
+       }
+   
+       @Hidden
+       public void test(String var1) {
+           App.lambda$main$0(var1);
+       }
+   }
+   ```
+
+4. App中通过实例化内部类，调用方法实现
+
+   ```java
+   new App$$Lambda$1().test("Hello World");
+   ```
+
+   
